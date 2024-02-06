@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: text-generation-webui-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: text-generation-webui
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: ${MAX_UNAVAILABLE_DREAMPAL_ROLLING_UPDATE}
+      maxSurge: ${MAX_SURGE_DREAMPAL_ROLLING_UPDATE}
+  template:
+    metadata:
+      labels:
+        app: text-generation-webui
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-l4
+        #cloud.google.com/gke-accelerator: nvidia-tesla-a100
+      tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Equal"
+        value: "present"
+        effect: "NoSchedule"
+      containers:
+      - name: text-generation-webui
+        image: "atinoda/text-generation-webui:default"
+        ports:
+        - containerPort: 7860
+        - containerPort: 5000
+        - containerPort: 5005
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 7860
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        resources:
+          requests:
+            # cpu: "12" # match a2-highgpu-1g machine resource: 12C/85G/1 x A100 40G gpu
+            # memory: "80Gi"
+            # nvidia.com/gpu: 4
+            cpu: "12" # match g2-standard-48 machine resource: 48C/192G/4 x L4 24G gpu
+            memory: "40Gi"
+            nvidia.com/gpu: 2
+          limits:
+            cpu: "12"
+            memory: "40Gi"
+            nvidia.com/gpu: 2
+        env:
+        - name: EXTRA_LAUNCH_ARGS
+          value: --listen\ --verbose\ --api\ --model-dir\ /data0/tgi/models\ --lora-dir\ /data0/tgi/loras\ --auto-devices
+          #--multi-user\
+        - name: HF_TOKEN
+          value: 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
+        - name: LISTEN_PORT
+          value: "7860"
+        - name: API_KEY
+          value: "shoppal"
+        volumeMounts:
+        - name: filestore-volume
+          mountPath: /shoppal_models/
+          readOnly: true
+        - name: devpod-data-volume
+          mountPath: /data0/
+      volumes:
+      - name: filestore-volume
+        persistentVolumeClaim:
+          claimName: dreampal-filestore-pvc
+      - name: devpod-data-volume
+        persistentVolumeClaim:
+          claimName: devpod-filestore-pvc
+      imagePullSecrets:
+      - name: ghcr-secret
