@@ -1,11 +1,11 @@
-name: Build llama-cpu-nightly
+name: Build default-nightly
 on:
 #  push:
   schedule:
     - cron: '22 12 * * *'
 
 jobs:
-  nightly-build-and-push-llama-cpu:
+  nightly-build-and-push-default:
     runs-on: ubuntu-latest
     steps:
       - 
@@ -36,10 +36,10 @@ jobs:
         run: echo "VERSION_TAG=nightly" >> $GITHUB_ENV
 
       -
-        name: Build and push - llama-cpu
+        name: Build and push - default
         uses: docker/build-push-action@v4
         with:
           push: true
-          target: llama-cpu
+          target: default-nvidia
           build-args: BUILD_DATE=${{ env.BUILD_DATE }},VERSION_TAG=${{ env.VERSION_TAG }}
-          tags: atinoda/text-generation-webui:llama-cpu-nightly
+          tags: atinoda/text-generation-webui:default-nightly,atinoda/text-generation-webui:default-nvidia-nightly
